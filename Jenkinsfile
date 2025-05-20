@@ -55,39 +55,43 @@ pipeline {
         //     }
         // }
 
-        stages {
-                stage('Run Pipeline Stages') {
-                    steps {
-                        script {
-                            def stages = env.ACTIVE_STAGES.split(',').collect { it.trim() }
+        stage('Run Pipeline Stages') {
+            steps {
+                script {
+                    def stages = env.ACTIVE_STAGES.split(',').collect { it.trim() }
 
-                            for (stageName in stages) {
-                                def yamlPath = "templates/${stageName}.yaml"
-                                echo "Reading: ${yamlPath}"
+                    for (stageName in stages) {
+                        def yamlPath = "templates/${stageName}.yaml"
+                        echo "Reading: ${yamlPath}"
 
-                                if (!fileExists(yamlPath)) {
-                                    error "YAML file not found: ${yamlPath}"
-                                }
-
-                                def yamlContent = readFile(yamlPath)
-                                def parsedYaml = new org.yaml.snakeyaml.Yaml().load(yamlContent)
-
-                                // Safely get steps from parsed YAML
-                                def commands = parsedYaml?.steps
-                                if (!commands) {
-                                    error "No 'steps' defined in: ${yamlPath}"
-                                }
-
-                                stage("Step: ${stageName}") {
-                                    for (cmd in commands) {
-                                        sh "${cmd}"
-                                    }
-                                }
-                            }
+                        if (!fileExists(yamlPath)) {
+                            error "YAML file not found: ${yamlPath}"
                         }
+
+                        def yamlContent = readFile(yamlPath)
+                        def parsedYaml = new org.yaml.snakeyaml.Yaml().load(yamlContent)
+
+                        def commands = parsedYaml?.steps
+                        if (!commands) {
+                            error "No 'steps' defined in: ${yamlPath}"
+                        }
+
+                        // Dynamically create stage using imperative syntax
+                        echo "Executing stage: ${stageName}"
+                        echo "Commands: ${commands}"
+
+                        // Create nested "stage" manually (not declarative)
+                        // Equivalent to stage("Step: ${stageName}") inside script
+                        def nestedStageName = "Step: ${stageName}"
+                        echo "--- STARTING ${nestedStageName} ---"
+                        for (cmd in commands) {
+                            sh "${cmd}"
+                        }
+                        echo "--- COMPLETED ${nestedStageName} ---"
                     }
                 }
             }
+        }
             
 
         stage('Deploy') {
