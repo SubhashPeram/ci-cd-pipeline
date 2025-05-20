@@ -1,4 +1,4 @@
-@Library('your-shared-library') _  // Optional if using shared libs
+// @Library('your-shared-library') _  // Optional if using shared libs
 
 pipeline {
     agent any
