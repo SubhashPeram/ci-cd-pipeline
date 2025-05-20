@@ -1,0 +1,3 @@
+steps:
+  - echo "Deploying the application..."
+  - kubectl apply -f k8s/deployment.yaml

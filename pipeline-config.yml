@@ -1,0 +1,5 @@
+stages:
+  - name: build
+  - name: lint
+  - name: scan
+  - name: deploy

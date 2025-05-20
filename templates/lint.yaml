@@ -1,0 +1,3 @@
+steps:
+  - echo "Linting the application..."
+  - npm run lint

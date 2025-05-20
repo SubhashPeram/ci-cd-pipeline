@@ -1,0 +1,3 @@
+steps:
+  - echo "Building the application..."
+  - docker build -t myapp:latest .

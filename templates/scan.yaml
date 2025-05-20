@@ -1,0 +1,3 @@
+steps:
+  - echo "Running security scan..."
+  - trivy image myapp:latest
