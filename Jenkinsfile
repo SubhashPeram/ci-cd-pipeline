@@ -1,7 +1,12 @@
 // @Library('your-shared-library') _  // Optional if using shared libs
 
 pipeline {
-    agent any
+    agent {
+        docker {
+        image 'docker:20.10.24-dind'
+        args '--privileged'
+        }
+    }
 
     environment {
         CONFIG_FILE = 'config.csv'
