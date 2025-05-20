@@ -57,7 +57,7 @@ pipeline {
         stage('Run Pipeline Stages') {
             steps {
                 script {
-                    def stages = env.ACTIVE_STAGES.split(',')*.trim()
+                    def stages = env.ACTIVE_STAGES.split(',').collect { it.trim() }
                     for (stageName in stages) {
                         def stageLabel = "Step: ${stageName}"
                         stage(stageLabel) {
