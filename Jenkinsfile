@@ -55,33 +55,32 @@ pipeline {
         //     }
         // }
 
-            stages {
-                    stage('Run Pipeline Stages') {
-                        steps {
-                            script {
-                                def stages = env.ACTIVE_STAGES.split(',').collect { it.trim() }
+        stages {
+                stage('Run Pipeline Stages') {
+                    steps {
+                        script {
+                            def stages = env.ACTIVE_STAGES.split(',').collect { it.trim() }
 
-                                for (stageName in stages) {
-                                    def yamlPath = "templates/${stageName}.yaml"
-                                    echo "Reading: ${yamlPath}"
+                            for (stageName in stages) {
+                                def yamlPath = "templates/${stageName}.yaml"
+                                echo "Reading: ${yamlPath}"
 
-                                    if (!fileExists(yamlPath)) {
-                                        error "YAML file not found: ${yamlPath}"
-                                    }
+                                if (!fileExists(yamlPath)) {
+                                    error "YAML file not found: ${yamlPath}"
+                                }
 
-                                    def yamlContent = readFile(yamlPath)
-                                    def parsedYaml = new org.yaml.snakeyaml.Yaml().load(yamlContent)
+                                def yamlContent = readFile(yamlPath)
+                                def parsedYaml = new org.yaml.snakeyaml.Yaml().load(yamlContent)
 
-                                    // Safely get steps from parsed YAML
-                                    def commands = parsedYaml?.steps
-                                    if (!commands) {
-                                        error "No 'steps' defined in: ${yamlPath}"
-                                    }
+                                // Safely get steps from parsed YAML
+                                def commands = parsedYaml?.steps
+                                if (!commands) {
+                                    error "No 'steps' defined in: ${yamlPath}"
+                                }
 
-                                    stage("Step: ${stageName}") {
-                                        for (cmd in commands) {
-                                            sh "${cmd}"
-                                        }
+                                stage("Step: ${stageName}") {
+                                    for (cmd in commands) {
+                                        sh "${cmd}"
                                     }
                                 }
                             }
@@ -89,6 +88,7 @@ pipeline {
                     }
                 }
             }
+            
 
         stage('Deploy') {
             when {
