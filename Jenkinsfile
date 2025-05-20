@@ -57,12 +57,22 @@ pipeline {
         stage('Run Pipeline Stages') {
             steps {
                 script {
-                    def stages = env.ACTIVE_STAGES.split(',')
+                    def stages = env.ACTIVE_STAGES.split(',')*.trim()
                     for (stageName in stages) {
-                        stage("Step: ${stageName}") {
+                        def stageLabel = "Step: ${stageName}"
+                        stage(stageLabel) {
                             def yamlPath = "templates/${stageName}.yaml"
+                            echo "Looking for YAML at: ${yamlPath}"
+
+                            // Confirm file exists
+                            if (!fileExists(yamlPath)) {
+                                error "YAML file not found: ${yamlPath}"
+                            }
+
+                            // Read and parse YAML if approved
                             def stepYaml = readFile(yamlPath)
                             def stageData = new org.yaml.snakeyaml.Yaml().load(stepYaml)
+
                             for (cmd in stageData.steps) {
                                 sh "${cmd}"
                             }
@@ -70,7 +80,7 @@ pipeline {
                     }
                 }
             }
-        }
+        }   
 
         stage('Deploy') {
             when {
