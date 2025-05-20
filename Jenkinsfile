@@ -5,7 +5,8 @@ pipeline {
 
     environment {
         CONFIG_FILE = 'config.csv'
-        PIPELINE_CONFIG = 'pipeline-config.yml'
+        // PIPELINE_CONFIG = 'pipeline-config.yml'
+        ACTIVE_STAGES = 'build, scan, deploy'
     }
 
     stages {
@@ -43,44 +44,51 @@ pipeline {
             }
         }
 
-        stage('Load Pipeline Config') {
-            steps {
-                script {
-                    def configText = readFile(env.PIPELINE_CONFIG)
-                    def pipelineConfig = new org.yaml.snakeyaml.Yaml().load(configText)
-                    env.ACTIVE_STAGES = pipelineConfig.stages.join(',')
-                    echo "Active Stages: ${env.ACTIVE_STAGES}"
-                }
-            }
-        }
+        // stage('Load Pipeline Config') {
+        //     steps {
+        //         script {
+        //             def configText = readFile(env.PIPELINE_CONFIG)
+        //             def pipelineConfig = new org.yaml.snakeyaml.Yaml().load(configText)
+        //             env.ACTIVE_STAGES = pipelineConfig.stages.join(',')
+        //             echo "Active Stages: ${env.ACTIVE_STAGES}"
+        //         }
+        //     }
+        // }
 
-        stage('Run Pipeline Stages') {
-            steps {
-                script {
-                    def stages = env.ACTIVE_STAGES.split(',').collect { it.trim() }
-                    for (stageName in stages) {
-                        def stageLabel = "Step: ${stageName}"
-                        stage(stageLabel) {
-                            def yamlPath = "templates/${stageName}.yaml"
-                            echo "Looking for YAML at: ${yamlPath}"
+            stages {
+                    stage('Run Pipeline Stages') {
+                        steps {
+                            script {
+                                def stages = env.ACTIVE_STAGES.split(',').collect { it.trim() }
 
-                            // Confirm file exists
-                            if (!fileExists(yamlPath)) {
-                                error "YAML file not found: ${yamlPath}"
-                            }
+                                for (stageName in stages) {
+                                    def yamlPath = "templates/${stageName}.yaml"
+                                    echo "Reading: ${yamlPath}"
 
-                            // Read and parse YAML if approved
-                            def stepYaml = readFile(yamlPath)
-                            def stageData = new org.yaml.snakeyaml.Yaml().load(stepYaml)
+                                    if (!fileExists(yamlPath)) {
+                                        error "YAML file not found: ${yamlPath}"
+                                    }
 
-                            for (cmd in stageData.steps) {
-                                sh "${cmd}"
+                                    def yamlContent = readFile(yamlPath)
+                                    def parsedYaml = new org.yaml.snakeyaml.Yaml().load(yamlContent)
+
+                                    // Safely get steps from parsed YAML
+                                    def commands = parsedYaml?.steps
+                                    if (!commands) {
+                                        error "No 'steps' defined in: ${yamlPath}"
+                                    }
+
+                                    stage("Step: ${stageName}") {
+                                        for (cmd in commands) {
+                                            sh "${cmd}"
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
-        }   
 
         stage('Deploy') {
             when {
