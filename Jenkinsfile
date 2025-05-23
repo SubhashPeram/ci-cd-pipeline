@@ -18,7 +18,7 @@ pipeline {
                         if (line.trim().startsWith(currentBranch + ',')) {
                             def parts = line.split(',')
                             env.IMAGE_EXISTS = parts[1].trim()
-                            env.IMAGE_PATH = parts[2].trim() // e.g., myorg/myimage:tag
+                            env.IMAGE_PATH = parts[2].trim() // e.g., myorg/myimage:tag or AWS ECR URL
                             env.DEST_CLUSTER = parts[3].trim()
                             env.CONTAINER_NAME = parts[4].trim()
                             env.DEPLOY_NAME = parts[5].trim()
@@ -40,11 +40,22 @@ pipeline {
             }
         }
 
-        stage('Pull Image from Docker Hub') {
+        stage('Pull Image') {
             steps {
                 script {
                     echo "Pulling image: ${env.IMAGE_PATH}"
-                    sh "docker pull ${env.IMAGE_PATH}"
+
+                    if (env.IMAGE_PATH.contains(".dkr.ecr.")) {
+                        def ecrRegistry = env.IMAGE_PATH.split('/')[0]
+                        echo "Detected ECR image. Authenticating to ECR: ${ecrRegistry}"
+
+                        sh """
+                        aws ecr get-login-password --region ${env.REGION} | docker login --username AWS --password-stdin ${ecrRegistry}
+                        docker pull ${env.IMAGE_PATH}
+                        """
+                    } else {
+                        sh "docker pull ${env.IMAGE_PATH}"
+                    }
                 }
             }
         }
