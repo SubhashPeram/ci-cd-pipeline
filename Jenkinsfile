@@ -1,17 +1,8 @@
-// @Library('your-shared-library') _  // Optional if using shared libs
-
 pipeline {
-    agent {
-        docker {
-        image 'docker:20.10.24-dind'
-        args '--privileged'
-        }
-    }
+    agent any
 
     environment {
         CONFIG_FILE = 'config.csv'
-        // PIPELINE_CONFIG = 'pipeline-config.yml'
-        ACTIVE_STAGES = 'build, scan, deploy'
     }
 
     stages {
@@ -27,7 +18,7 @@ pipeline {
                         if (line.trim().startsWith(currentBranch + ',')) {
                             def parts = line.split(',')
                             env.IMAGE_EXISTS = parts[1].trim()
-                            env.IMAGE_PATH = parts[2].trim()
+                            env.IMAGE_PATH = parts[2].trim() // e.g., myorg/myimage:tag
                             env.DEST_CLUSTER = parts[3].trim()
                             env.CONTAINER_NAME = parts[4].trim()
                             env.DEPLOY_NAME = parts[5].trim()
@@ -49,55 +40,14 @@ pipeline {
             }
         }
 
-        // stage('Load Pipeline Config') {
-        //     steps {
-        //         script {
-        //             def configText = readFile(env.PIPELINE_CONFIG)
-        //             def pipelineConfig = new org.yaml.snakeyaml.Yaml().load(configText)
-        //             env.ACTIVE_STAGES = pipelineConfig.stages.join(',')
-        //             echo "Active Stages: ${env.ACTIVE_STAGES}"
-        //         }
-        //     }
-        // }
-
-        stage('Run Pipeline Stages') {
+        stage('Pull Image from Docker Hub') {
             steps {
                 script {
-                    def stages = env.ACTIVE_STAGES.split(',').collect { it.trim() }
-
-                    for (stageName in stages) {
-                        def yamlPath = "templates/${stageName}.yaml"
-                        echo "Reading: ${yamlPath}"
-
-                        if (!fileExists(yamlPath)) {
-                            error "YAML file not found: ${yamlPath}"
-                        }
-
-                        def yamlContent = readFile(yamlPath)
-                        def parsedYaml = new org.yaml.snakeyaml.Yaml().load(yamlContent)
-
-                        def commands = parsedYaml?.steps
-                        if (!commands) {
-                            error "No 'steps' defined in: ${yamlPath}"
-                        }
-
-                        // Dynamically create stage using imperative syntax
-                        echo "Executing stage: ${stageName}"
-                        echo "Commands: ${commands}"
-
-                        // Create nested "stage" manually (not declarative)
-                        // Equivalent to stage("Step: ${stageName}") inside script
-                        def nestedStageName = "Step: ${stageName}"
-                        echo "--- STARTING ${nestedStageName} ---"
-                        for (cmd in commands) {
-                            sh "${cmd}"
-                        }
-                        echo "--- COMPLETED ${nestedStageName} ---"
-                    }
+                    echo "Pulling image: ${env.IMAGE_PATH}"
+                    sh "docker pull ${env.IMAGE_PATH}"
                 }
             }
         }
-            
 
         stage('Deploy') {
             when {
@@ -108,7 +58,7 @@ pipeline {
                     echo "Deploying ${env.CONTAINER_NAME} with image ${env.IMAGE_PATH}"
                     sh """
                     echo "kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=default"
-                    # Actual deploy command:
+                    # Uncomment the line below to enable real deployment
                     # kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=default
                     """
                 }
