@@ -64,7 +64,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    aws eks update-kubeconfig --region ${env.AWS_REGION} --name ${env.CLUSTER_NAME}
+                    aws eks update-kubeconfig --region ${env.REGION} --name ${env.DEST_CLUSTER}
                     kubectl get nodes
                     """
                 }
