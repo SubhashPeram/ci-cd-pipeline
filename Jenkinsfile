@@ -60,6 +60,17 @@ pipeline {
             }
         }
 
+        stage('Configure kubectl') {
+            steps {
+                script {
+                    sh """
+                    aws eks update-kubeconfig --region ${env.AWS_REGION} --name ${env.CLUSTER_NAME}
+                    kubectl get nodes
+                    """
+                }
+            }
+        }
+
         stage('Deploy') {
             when {
                 expression { env.IMAGE_EXISTS == 'yes' }
