@@ -3,8 +3,8 @@ pipeline {
 
     environment {
         CONFIG_FILE = 'config.csv'
-        export REGION=us-east-1
-        export KUBECONFIG=/home/cloudshell-user/.kube/config
+        REGION=us-east-1
+        KUBECONFIG=/home/cloudshell-user/.kube/config
     }
 
     stages {
