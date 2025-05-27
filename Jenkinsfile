@@ -3,6 +3,8 @@ pipeline {
 
     environment {
         CONFIG_FILE = 'config.csv'
+        export REGION=us-east-1
+        export KUBECONFIG=/home/cloudshell-user/.kube/config
     }
 
     stages {
@@ -64,7 +66,6 @@ pipeline {
             steps {
                 script {
                     sh """
-                    export KUBECONFIG=/var/lib/jenkins/.kube/config
                     aws eks update-kubeconfig --region ${env.REGION} --name ${env.DEST_CLUSTER}
                     kubectl get nodes
                     """
