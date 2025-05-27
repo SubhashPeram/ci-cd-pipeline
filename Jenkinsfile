@@ -60,7 +60,16 @@ pipeline {
             }
         }
 
-
+        stage('Check AWS Access') {
+            steps {
+                sh '''
+                whoami
+                echo $HOME
+                aws sts get-caller-identity
+                '''
+            }
+        }
+        
         stage('Configure kubectl') {
             steps {
                 script {
@@ -71,16 +80,6 @@ pipeline {
                     kubectl get nodes
                     """
                 }
-            }
-        }
-
-        stage('Check AWS Access') {
-            steps {
-                sh '''
-                whoami
-                echo $HOME
-                aws sts get-caller-identity
-                '''
             }
         }
 
