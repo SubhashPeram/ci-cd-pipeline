@@ -4,7 +4,7 @@ pipeline {
     environment {
         CONFIG_FILE = 'config.csv'
         REGION = 'us-east-1'
-        KUBECONFIG = '/home/cloudshell-user/.kube/config'
+        KUBECONFIG = '/var/lib/jenkins/.kube/config'
     }
 
     stages {
