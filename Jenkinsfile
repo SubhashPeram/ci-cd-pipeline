@@ -64,8 +64,9 @@ pipeline {
             steps {
                 script {
                     sh """
+                    export KUBECONFIG=/var/lib/jenkins/.kube/config
                     aws eks update-kubeconfig --region ${env.REGION} --name ${env.DEST_CLUSTER}
-                   # kubectl get nodes
+                    kubectl get nodes
                     """
                 }
             }
