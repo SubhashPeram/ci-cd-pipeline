@@ -3,8 +3,6 @@ pipeline {
 
     environment {
         CONFIG_FILE = 'config.csv'
-        REGION = 'us-east-1'
-        KUBECONFIG = '/var/lib/jenkins/.kube/config'
     }
 
     stages {
@@ -62,14 +60,27 @@ pipeline {
             }
         }
 
+
         stage('Configure kubectl') {
             steps {
                 script {
                     sh """
+                    export REGION=us-east-1
+                    export KUBECONFIG=/var/lib/jenkins/.kube/config
                     aws eks update-kubeconfig --region ${env.REGION} --name ${env.DEST_CLUSTER}
                     kubectl get nodes
                     """
                 }
+            }
+        }
+
+        stage('Check AWS Access') {
+            steps {
+                sh '''
+                whoami
+                echo $HOME
+                aws sts get-caller-identity
+                '''
             }
         }
 
