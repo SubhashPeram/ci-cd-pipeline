@@ -97,9 +97,11 @@ pipeline {
                         // script: "kubectl get deployment ${env.DEPLOY_NAME} --namespace=${namespace} --ignore-not-found",
                         script: "kubectl get deployment ${env.DEPLOY_NAME} --namespace=${namespace} -o name",                
                         returnStatus: true
-                    )
+                    ).trim()
 
-                    if (checkDeployment == 0) {
+                    echo "DEBUG: checkDeployment = '${checkDeployment}'"
+
+                    if (checkDeployment) {  // <-- If the variable has a value, deployment exists
                         echo "Deployment does not exist. Creating deployment..."
                         sh "kubectl create deployment ${env.DEPLOY_NAME} --image=${env.IMAGE_PATH} --namespace=${namespace}"
                         sh "kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=${namespace}"
