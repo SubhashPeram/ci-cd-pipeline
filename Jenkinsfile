@@ -94,7 +94,8 @@ pipeline {
                     // def image = 'amazonlinux:latest'
 
                     def checkDeployment = sh(
-                        script: "kubectl get deployment ${env.DEPLOY_NAME} --namespace=${namespace} --ignore-not-found",
+                        // script: "kubectl get deployment ${env.DEPLOY_NAME} --namespace=${namespace} --ignore-not-found",
+                        script: "kubectl get deployment ${env.DEPLOY_NAME} --namespace=${namespace} -o name",                
                         returnStatus: true
                     )
 
