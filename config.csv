@@ -1,2 +1,2 @@
 ﻿branch-name,image-exists,image-path,destination-cluster,container-name,deployment-name,region
-main,yes,amazonlinux:latest,myeks-cluster,contoso,contoso-deploy,us-east-1
+main,yes,amazonlinux:latest,myeks-cluster,amazonlinux,contoso-deploy,us-east-1
