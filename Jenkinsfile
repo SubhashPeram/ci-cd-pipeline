@@ -97,7 +97,7 @@ pipeline {
                         // script: "kubectl get deployment ${env.DEPLOY_NAME} --namespace=${namespace} --ignore-not-found",
                         script: "kubectl get deployment ${env.DEPLOY_NAME} --namespace=${namespace} -o name",                
                         returnStatus: true
-                    ).trim()
+                    ).toString().trim()
 
                     echo "DEBUG: checkDeployment = '${checkDeployment}'"
 
