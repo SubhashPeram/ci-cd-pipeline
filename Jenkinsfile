@@ -121,6 +121,16 @@ pipeline {
             //         """
             //     }
             // }
+            
+        }
+        
+        stage('Test Deployment') {
+            steps {
+                script {
+                    sh "kubectl rollout status deployment/${env.DEPLOY_NAME} --namespace=default"
+                    sh "kubectl get pods --namespace=default"
+                }
+            }
         }
     }
 }
