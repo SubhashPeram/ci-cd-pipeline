@@ -89,14 +89,35 @@ pipeline {
             }
             steps {
                 script {
-                    echo "Deploying ${env.CONTAINER_NAME} with image ${env.IMAGE_PATH}"
-                    sh """
-                    echo "kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=default"
-                    # Uncomment the line below to enable real deployment
-                     kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=default
-                    """
+                    // def deploymentName = 'contoso-deploy'
+                    def namespace = 'default'
+                    // def image = 'amazonlinux:latest'
+
+                    def checkDeployment = sh(
+                        script: "kubectl get deployment ${env.DEPLOY_NAME} --namespace=${namespace} --ignore-not-found",
+                        returnStatus: true
+                    )
+
+                    if (checkDeployment != 0) {
+                        echo "Deployment does not exist. Creating deployment..."
+                        sh "kubectl create deployment ${env.DEPLOY_NAME} --image=${env.IMAGE_PATH} --namespace=${namespace}"
+                        sh "kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=${namespace}"
+                    } else {
+                        echo "Deployment exists. Updating image..."
+                        sh "kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=${namespace}"
+                    }
                 }
             }
+            // steps {
+            //     script {
+            //         echo "Deploying ${env.CONTAINER_NAME} with image ${env.IMAGE_PATH}"
+            //         sh """
+            //         echo "kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=default"
+            //         # Uncomment the line below to enable real deployment
+            //          kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=default
+            //         """
+            //     }
+            // }
         }
     }
 }
