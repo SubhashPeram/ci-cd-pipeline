@@ -1,55 +1,60 @@
 pipeline {
     agent any
- 
+
     environment {
         AWS_REGION = 'us-east-1'
         ECR_REPO = '119537256357.dkr.ecr.us-east-1.amazonaws.com/myapp'
         EXCEL_FILE = 'docker_config.xlsx'
     }
- 
+
     tools {
         python 'Python3'
     }
- 
+
     stages {
         stage('Install Python Requirements') {
             steps {
                 sh 'pip install openpyxl'
             }
         }
- 
+
         stage('Parse Excel and Generate Dockerfile') {
             steps {
                 script {
                     writeFile file: 'parse_excel.py', text: '''
-import openpyxl
- 
-wb = openpyxl.load_workbook("docker_config.xlsx")
-ws = wb.active
- 
-headers = [cell.value for cell in ws[1]]
-values = [cell.value for cell in ws[2]]
- 
-config = dict(zip(headers, values))
- 
-with open("Dockerfile", "w") as f:
-    f.write(f"FROM {config['base_image']}\\n")
-    f.write(f"LABEL maintainer=\\"{config['maintainer']}\\"\\n")
-    f.write("WORKDIR /app\\n")
-    f.write("COPY . /app\\n")
-    f.write("RUN pip install -r requirements.txt\\n")
-    f.write(f"EXPOSE {config['app_port']}\\n")
-    f.write('CMD ["python", "app.py"]\\n')
- 
-with open("build_vars.txt", "w") as f:
-    for key, val in config.items():
-        f.write(f"{key}={val}\\n")
+                    import openpyxl
+
+                    wb = openpyxl.load_workbook("docker_config.xlsx")
+                    ws = wb.active
+
+                    headers = [cell.value for cell in ws[1]]
+                    values = [cell.value for cell in ws[2]]
+
+                    config = dict(zip(headers, values))
+
+                    required_keys = ['base_image', 'maintainer', 'app_port', 'tag', 'app_name']
+                    for key in required_keys:
+                        if key not in config:
+                            raise ValueError(f"Missing {key} in Excel")
+
+                    with open("Dockerfile", "w") as f:
+                        f.write(f"FROM {config['base_image']}\\n")
+                        f.write(f"LABEL maintainer=\\"{config['maintainer']}\\"\\n")
+                        f.write("WORKDIR /app\\n")
+                        f.write("COPY . /app\\n")
+                        f.write("RUN pip install -r requirements.txt\\n")
+                        f.write(f"EXPOSE {config['app_port']}\\n")
+                        f.write('CMD ["python", "app.py"]\\n')
+
+                    with open("build_vars.txt", "w") as f:
+                        for key, val in config.items():
+                            f.write(f"{key}={val}\\n")
                     '''
                     sh 'python3 parse_excel.py'
                 }
             }
         }
- 
+
         stage('Load Build Variables') {
             steps {
                 script {
@@ -59,19 +64,19 @@ with open("build_vars.txt", "w") as f:
                 }
             }
         }
- 
+
         stage('Login to AWS ECR') {
             steps {
                 sh 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO'
             }
         }
- 
+
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t $APP_NAME:$IMAGE_TAG .'
             }
         }
- 
+
         stage('Tag and Push Docker Image') {
             steps {
                 sh '''
@@ -79,6 +84,13 @@ with open("build_vars.txt", "w") as f:
                     docker push $ECR_REPO:$IMAGE_TAG
                 '''
             }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker rmi $APP_NAME:$IMAGE_TAG || true'
+            sh 'docker rmi $ECR_REPO:$IMAGE_TAG || true'
         }
     }
 }
