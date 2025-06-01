@@ -52,7 +52,7 @@ pipeline {
                     '''
                     sh 'python3 parse_excel.py'
                 }
-            }c
+            }
         }
 
         stage('Load Build Variables') {
