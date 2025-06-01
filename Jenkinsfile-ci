@@ -82,5 +82,3 @@ with open("build_vars.txt", "w") as f:
         }
     }
 }
-ci.txt
-Displaying ci.txt.
