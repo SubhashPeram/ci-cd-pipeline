@@ -29,34 +29,37 @@ import openpyxl
 wb = openpyxl.load_workbook('docker_config.xlsx')
 ws = wb.active
 
-# Read headers (lowercased) and values
-headers = [cell.value.lower() if cell.value else '' for cell in ws[1]]
-values = [cell.value for cell in ws[2]]
+config = {}
 
-config = dict(zip(headers, values))
+# Read rows starting from row 2
+for row in ws.iter_rows(min_row=2, max_col=2, values_only=True):
+    key, value = row
+    if key and value:
+        config[key.strip().lower()] = str(value).strip()
+
+print("Config loaded:", config)
 
 # Validate required keys
-required_keys = ['base_image', 'maintainer', 'app_port', 'tag', 'app_name']
+required_keys = ['base_image', 'arg_app_name', 'arg_version', 'expose_port']
 for key in required_keys:
     if key not in config:
         raise ValueError(f'Missing {key} in Excel')
 
 # Generate Dockerfile
 with open('Dockerfile', 'w') as f:
-    f.write(f'FROM {config["base_image"]}\\n')
-    f.write(f'LABEL maintainer="{config["maintainer"]}"\\n')
-    f.write('WORKDIR /app\\n')
-    f.write('COPY . /app\\n')
-    f.write('RUN pip install -r requirements.txt\\n')
-    f.write(f'EXPOSE {config["app_port"]}\\n')
-    f.write('CMD ["python", "app.py"]\\n')
+    f.write(f'FROM {config["base_image"]}\n')
+    f.write(f'WORKDIR {config["workdir"]}\n')
+    f.write(f'COPY {config["copy_src"]} {config["copy_dest"]}\n')
+    f.write(f'EXPOSE {config["expose_port"]}\n')
+    f.write(f'CMD {config["cmd"]}\n')
 
 # Write build_vars.txt
 with open('build_vars.txt', 'w') as f:
     for key, val in config.items():
-        f.write(f'{key}={val}\\n')
+        f.write(f'{key}={val}\n')
 
 print("Dockerfile and build_vars.txt generated successfully.")
+
                     '''
                 }
             }
