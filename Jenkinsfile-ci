@@ -29,7 +29,7 @@ import openpyxl
 wb = openpyxl.load_workbook('docker_config.xlsx')
 ws = wb.active
 
-# Read headers (converted to lowercase) and values
+# Read headers (lowercased) and values
 headers = [cell.value.lower() if cell.value else '' for cell in ws[1]]
 values = [cell.value for cell in ws[2]]
 
