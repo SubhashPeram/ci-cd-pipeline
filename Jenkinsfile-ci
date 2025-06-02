@@ -23,40 +23,41 @@ pipeline {
             steps {
                 script {
                     writeFile file: 'parse_excel.py', text: '''
-                    import openpyxl
+import openpyxl
 
-                    # Load Excel workbook and sheet
-                    wb = openpyxl.load_workbook('docker_config.xlsx')
-                    ws = wb.active
+# Load Excel workbook and sheet
+wb = openpyxl.load_workbook('docker_config.xlsx')
+ws = wb.active
 
-                    # Read headers (converted to lowercase) and values
-                    headers = [cell.value.lower() if cell.value else '' for cell in ws[1]]
-                    values = [cell.value for cell in ws[2]]
+# Read headers (converted to lowercase) and values
+headers = [cell.value.lower() if cell.value else '' for cell in ws[1]]
+values = [cell.value for cell in ws[2]]
 
-                    config = dict(zip(headers, values))
+config = dict(zip(headers, values))
 
-                    # Validate required keys
-                    required_keys = ['base_image', 'maintainer', 'app_port', 'tag', 'app_name']
-                    for key in required_keys:
-                        if key not in config:
-                            raise ValueError(f'Missing {key} in Excel')
+# Validate required keys
+required_keys = ['base_image', 'maintainer', 'app_port', 'tag', 'app_name']
+for key in required_keys:
+    if key not in config:
+        raise ValueError(f'Missing {key} in Excel')
 
-                    # Generate Dockerfile
-                    with open('Dockerfile', 'w') as f:
-                        f.write(f'FROM {config["base_image"]}\n')
-                        f.write(f'LABEL maintainer="{config["maintainer"]}"\n')
-                        f.write('WORKDIR /app\n')
-                        f.write('COPY . /app\n')
-                        f.write('RUN pip install -r requirements.txt\n')
-                        f.write(f'EXPOSE {config["app_port"]}\n')
-                        f.write('CMD ["python", "app.py"]\n')
+# Generate Dockerfile
+with open('Dockerfile', 'w') as f:
+    f.write(f'FROM {config["base_image"]}\n')
+    f.write(f'LABEL maintainer="{config["maintainer"]}"\n')
+    f.write('WORKDIR /app\n')
+    f.write('COPY . /app\n')
+    f.write('RUN pip install -r requirements.txt\n')
+    f.write(f'EXPOSE {config["app_port"]}\n')
+    f.write('CMD ["python", "app.py"]\n')
 
-                    # Write build_vars.txt
-                    with open('build_vars.txt', 'w') as f:
-                        for key, val in config.items():
-                            f.write(f'{key}={val}\n')
+# Write build_vars.txt
+with open('build_vars.txt', 'w') as f:
+    for key, val in config.items():
+        f.write(f'{key}={val}\n')
 
-                    print("Dockerfile and build_vars.txt generated successfully.")
+print("Dockerfile and build_vars.txt generated successfully.")
+
                     '''
                 }
             }
