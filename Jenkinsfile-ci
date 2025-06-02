@@ -18,6 +18,14 @@ pipeline {
             }
         }
 
+        stage('Verify Python Environment') {
+            steps {
+                sh 'python3 --version'
+                sh 'pip3 --version || true'  // in case pip is not present
+                sh 'python3 -c "import openpyxl; print(openpyxl.__version__)"'
+            }
+        }
+        
         stage('Parse Excel and Generate Dockerfile') {
             steps {
                 script {
