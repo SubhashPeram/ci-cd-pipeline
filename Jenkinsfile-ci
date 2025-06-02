@@ -4,58 +4,62 @@ pipeline {
     environment {
         AWS_REGION = 'us-east-1'
         ECR_REPO = '119537256357.dkr.ecr.us-east-1.amazonaws.com/myapp'
-        EXCEL_FILE = 'docker_config.xlsx'
         VENV_PATH = 'venv'
     }
 
     stages {
-        stage('Setup Python Virtualenv') {
+        stage('Setup Python Virtual Environment') {
             steps {
                 sh '''
                     python3 -m venv $VENV_PATH
                     . $VENV_PATH/bin/activate
                     pip install --upgrade pip
                     pip install openpyxl
-                    python -c "import openpyxl; print(openpyxl.__version__)"
                 '''
             }
         }
 
-        stage('Parse Excel and Generate Dockerfile') {
+        stage('Generate Python Script') {
+            steps {
+                script {
+                    writeFile file: 'parse_excel.py', text: '''
+import openpyxl
+
+wb = openpyxl.load_workbook('docker_config.xlsx')
+ws = wb.active
+
+headers = [cell.value for cell in ws[1]]
+values = [cell.value for cell in ws[2]]
+
+config = dict(zip(headers, values))
+
+required_keys = ['base_image', 'maintainer', 'app_port', 'tag', 'app_name']
+for key in required_keys:
+    if key not in config:
+        raise ValueError(f'Missing {key} in Excel')
+
+with open('Dockerfile', 'w') as f:
+    f.write(f'FROM {config["base_image"]}\\n')
+    f.write(f'LABEL maintainer=\\"{config["maintainer"]}\\"\\n')
+    f.write('WORKDIR /app\\n')
+    f.write('COPY . /app\\n')
+    f.write('RUN pip install -r requirements.txt\\n')
+    f.write(f'EXPOSE {config["app_port"]}\\n')
+    f.write('CMD ["python", "app.py"]\\n')
+
+with open('build_vars.txt', 'w') as f:
+    for key, val in config.items():
+        f.write(f'{key}={val}\\n')
+'''
+                }
+            }
+        }
+
+        stage('Run Python Script') {
             steps {
                 sh '''
                     . $VENV_PATH/bin/activate
-                    . $VENV_PATH/bin/activate
-                    python3 -c 
-
-                import openpyxl
-
-                wb = openpyxl.load_workbook('docker_config.xlsx')
-                ws = wb.active
-
-                headers = [cell.value for cell in ws[1]]
-                values = [cell.value for cell in ws[2]]
-
-                config = dict(zip(headers, values))
-
-                required_keys = ['base_image', 'maintainer', 'app_port', 'tag', 'app_name']
-                for key in required_keys:
-                    if key not in config:
-                        raise ValueError(f'Missing {key} in Excel')
-
-                with open('Dockerfile', 'w') as f:
-                    f.write(f'FROM {config["base_image"]}\\n')
-                    f.write(f'LABEL maintainer=\\"{config["maintainer"]}\\"\\n')
-                    f.write('WORKDIR /app\\n')
-                    f.write('COPY . /app\\n')
-                    f.write('RUN pip install -r requirements.txt\\n')
-                    f.write(f'EXPOSE {config["app_port"]}\\n')
-                    f.write('CMD [\\"python\\", \\"app.py\\"]\\n')
-
-                with open('build_vars.txt', 'w') as f:
-                    for key, val in config.items():
-                        f.write(f'{key}={val}\\n')
-                "
+                    python3 parse_excel.py
                 '''
             }
         }
@@ -72,7 +76,9 @@ pipeline {
 
         stage('Login to AWS ECR') {
             steps {
-                sh 'aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO'
+                sh '''
+                    aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REPO
+                '''
             }
         }
 
