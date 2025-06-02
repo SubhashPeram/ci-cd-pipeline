@@ -31,7 +31,7 @@ ws = wb.active
 
 config = {}
 
-# Read rows starting from row 2
+# Read rows as key-value pairs
 for row in ws.iter_rows(min_row=2, max_col=2, values_only=True):
     key, value = row
     if key and value:
@@ -48,8 +48,8 @@ for key in required_keys:
 # Generate Dockerfile
 with open('Dockerfile', 'w') as f:
     f.write(f'FROM {config["base_image"]}\n')
-    f.write(f'WORKDIR {config["workdir"]}\n')
-    f.write(f'COPY {config["copy_src"]} {config["copy_dest"]}\n')
+    f.write(f'WORKDIR {config.get("workdir", "/app")}\n')
+    f.write(f'COPY {config.get("copy_src", ".")} {config.get("copy_dest", "/app")}\n')
     f.write(f'EXPOSE {config["expose_port"]}\n')
     f.write(f'CMD {config["cmd"]}\n')
 
@@ -59,7 +59,6 @@ with open('build_vars.txt', 'w') as f:
         f.write(f'{key}={val}\n')
 
 print("Dockerfile and build_vars.txt generated successfully.")
-
                     '''
                 }
             }
