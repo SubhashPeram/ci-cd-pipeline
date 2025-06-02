@@ -25,7 +25,9 @@ pipeline {
             steps {
                 sh '''
                     . $VENV_PATH/bin/activate
-                    python3 -c "
+                    . $VENV_PATH/bin/activate
+                    python3 -c 
+
                 import openpyxl
 
                 wb = openpyxl.load_workbook('docker_config.xlsx')
