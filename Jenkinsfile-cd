@@ -1,0 +1,149 @@
+pipeline {
+    agent any
+
+    /*********************
+     * GLOBAL ENV VARS   *
+     *********************/
+    environment {
+        CONFIG_FILE      = 'config.csv'
+
+        /* Service‑principal creds stored in Jenkins */
+        AZ_SUBSCRIPTION  = credentials('AZURE_SUBSCRIPTION_ID')
+        AZ_CLIENT_ID     = credentials('AZURE_CLIENT_ID')
+        AZ_CLIENT_SECRET = credentials('AZURE_CLIENT_SECRET')
+        AZ_TENANT_ID     = credentials('AZURE_TENANT_ID')
+    }
+
+    stages {
+        /*********************
+         * LOGIN TO AZURE    *
+         *********************/
+        stage('Azure Login') {
+            steps {
+                sh '''
+                echo "Logging in to Azure…"
+                az login --service-principal \
+                         --username "$AZ_CLIENT_ID" \
+                         --password "$AZ_CLIENT_SECRET" \
+                         --tenant   "$AZ_TENANT_ID"
+                az account set --subscription "$AZ_SUBSCRIPTION"
+                '''
+            }
+        }
+
+        /*********************
+         * READ CSV CONFIG   *
+         *********************/
+        stage('Read Config') {
+            steps {
+                script {
+                    def currentBranch = env.BRANCH_NAME ?: 'main'
+                    echo "Reading config for branch: ${currentBranch}"
+
+                    def csvFile = readFile(env.CONFIG_FILE).split('\n')
+                    def found = false
+                    csvFile.each { line ->
+                        if (line.trim().startsWith(currentBranch + ',')) {
+                            def p              = line.split(',')
+                            env.IMAGE_EXISTS   = p[1].trim()
+                            env.IMAGE_PATH     = p[2].trim()   // myacr.azurecr.io/myimage:tag
+                            env.DEST_CLUSTER   = p[3].trim()   // AKS cluster name
+                            env.CONTAINER_NAME = p[4].trim()
+                            env.DEPLOY_NAME    = p[5].trim()
+                            env.RESOURCE_GROUP = p[6].trim()   // <-- replace REGION column with RG
+                            found = true
+                        }
+                    }
+
+                    if (!found) {
+                        error "No matching config found for branch: ${currentBranch}"
+                    }
+
+                    echo """
+                    Image Exists : ${env.IMAGE_EXISTS}
+                    Image Path   : ${env.IMAGE_PATH}
+                    Cluster      : ${env.DEST_CLUSTER}
+                    ResourceGrp  : ${env.RESOURCE_GROUP}
+                    Deployment   : ${env.DEPLOY_NAME}
+                    """
+                }
+            }
+        }
+
+        /*********************
+         * PULL FROM ACR     *
+         *********************/
+        stage('Pull Image') {
+            steps {
+                script {
+                    echo "Pulling image: ${env.IMAGE_PATH}"
+
+                    if (env.IMAGE_PATH.contains('.azurecr.io')) {
+                        /* Extract “myacr.azurecr.io” -> registry name “myacr” */
+                        def acrName = env.IMAGE_PATH.split('/')[0].replace('.azurecr.io','')
+                        sh """
+                        echo "Authenticating to ACR $acrName…"
+                        az acr login --name $acrName
+                        docker pull ${env.IMAGE_PATH}
+                        """
+                    } else {
+                        sh "docker pull ${env.IMAGE_PATH}"
+                    }
+                }
+            }
+        }
+
+        /*********************
+         * CONFIGURE KUBECTL *
+         *********************/
+        stage('Configure kubectl') {
+            steps {
+                sh """
+                echo "Fetching AKS kubeconfig…"
+                az aks get-credentials \
+                    --resource-group ${env.RESOURCE_GROUP} \
+                    --name ${env.DEST_CLUSTER} \
+                    --overwrite-existing
+                kubectl get nodes
+                """
+            }
+        }
+
+        /*********************
+         * DEPLOY/UPDATE     *
+         *********************/
+        stage('Deploy') {
+            when { expression { env.IMAGE_EXISTS == 'yes' } }
+            steps {
+                script {
+                    def namespace = 'default'
+                    def exists = sh(
+                        script: "kubectl get deployment ${env.DEPLOY_NAME} --namespace=${namespace} -o name || true",
+                        returnStdout: true
+                    ).trim()
+
+                    if (exists) {
+                        echo "Deployment exists – updating image…"
+                        sh "kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=${namespace}"
+                    } else {
+                        echo "Deployment not found – creating deployment…"
+                        sh """
+                        kubectl create deployment ${env.DEPLOY_NAME} --image=${env.IMAGE_PATH} --namespace=${namespace}
+                        kubectl set image deployment/${env.DEPLOY_NAME} ${env.CONTAINER_NAME}=${env.IMAGE_PATH} --namespace=${namespace}
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    /*********************
+     * CLEANUP (optional)*
+     *********************/
+    post {
+        always {
+            echo 'Pipeline finished.'
+            /* az logout  (not strictly required in CI runners) */
+        }
+    }
+}
