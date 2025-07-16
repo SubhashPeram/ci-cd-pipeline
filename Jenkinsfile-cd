@@ -14,12 +14,13 @@ pipeline {
         AZ_TENANT_ID     = credentials('AZURE_TENANT_ID')
     }
 
-        stages {
-            stage('Clean Workspace') {
-                    steps {
-                    deleteDir()
+        stage('Debug Git') {
+              steps {
+                sh 'which git || echo "git not found on PATH"'
+                sh 'git --version || echo "git --version failed"'
+                sh 'ls -la .'
+              }
             }
-        }
         /*********************
          * LOGIN TO AZURE    *
          *********************/
