@@ -14,7 +14,12 @@ pipeline {
         AZ_TENANT_ID     = credentials('AZURE_TENANT_ID')
     }
 
-    stages {
+        stages {
+            stage('Clean Workspace') {
+                    steps {
+                    deleteDir()
+            }
+        }
         /*********************
          * LOGIN TO AZURE    *
          *********************/
